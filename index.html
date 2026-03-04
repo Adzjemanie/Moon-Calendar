@@ -1,135 +1,479 @@
-<!DOCTYPE html>
-<html lang="nl">
+<!doctype html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Maan</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Moon</title>
+  <style>
+    :root{
+      --bg:#fff;
+      --fg:#000;
+      --muted: rgba(0,0,0,.62);
+      --hair: rgba(0,0,0,.14);
+      --radius: 18px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: ui-rounded, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--fg);
+    }
+    .wrap{
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 22px;
+    }
+    header{
+      text-align:center;
+      margin-top: 6px;
+    }
+    header h1{
+      margin:0;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+    header .date{
+      margin-top: 7px;
+      font-size: 14px;
+      color: var(--muted);
+    }
 
-<style>
-body{
-font-family:system-ui;
-background:white;
-color:black;
-text-align:center;
-margin:0;
-padding:30px;
-}
+    .moon-stage{
+      display:flex;
+      justify-content:center;
+      margin: 18px 0 10px;
+    }
+    canvas#bigMoon{
+      width: 300px;
+      height: 300px;
+      border-radius: 999px;
+      display:block;
+    }
 
-canvas{
-margin:auto;
-display:block;
-}
+    .phase-line{
+      text-align:center;
+      margin-top: 2px;
+      font-size: 14px;
+      color: var(--muted);
+    }
 
-.calendar{
-max-width:420px;
-margin:auto;
-display:grid;
-grid-template-columns:repeat(7,1fr);
-gap:10px;
-margin-top:20px;
-}
+    .meta{
+      text-align:center;
+      line-height: 1.55;
+      margin: 14px 0 18px;
+      font-size: 18px;
+    }
 
-.day{
-font-size:12px;
-}
-</style>
+    .card{
+      border: 1px solid var(--hair);
+      border-radius: var(--radius);
+      padding: 14px;
+      background: #fff;
+    }
+
+    .cal-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      margin: 6px 0 10px;
+    }
+    .cal-head .title{
+      font-size: 16px;
+      font-weight: 650;
+    }
+    .btns{ display:flex; gap: 10px; }
+    button{
+      border: 1px solid var(--hair);
+      background: var(--bg);
+      color: var(--fg);
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 14px;
+      cursor:pointer;
+    }
+    button:hover{ border-color: rgba(0,0,0,.28); }
+
+    .weekdays{
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      text-align:center;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px 8px;
+    }
+
+    .cell{
+      height: 52px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      gap: 6px;
+      border-radius: 12px;
+      padding-top: 6px;
+    }
+    .cell.today{
+      outline: 2px solid rgba(0,0,0,.22);
+      outline-offset: -2px;
+    }
+    .day{
+      font-size: 12px;
+      font-weight: 650;
+      line-height: 1;
+    }
+    canvas.mini{
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      display:block;
+    }
+
+    .explain{
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--hair);
+    }
+    .explain h2{
+      margin: 0 0 6px 0;
+      font-size: 14px;
+      font-weight: 750;
+      letter-spacing: .2px;
+    }
+    .explain p{
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    footer{
+      text-align:center;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 14px;
+    }
+  </style>
 </head>
 
 <body>
+  <div class="wrap">
+    <header>
+      <h1>Moon</h1>
+      <div class="date" id="todayLabel"></div>
+    </header>
 
-<h1>Maan</h1>
-<p id="date"></p>
+    <div class="moon-stage">
+      <canvas id="bigMoon" width="600" height="600" aria-label="Moon phase"></canvas>
+    </div>
 
-<canvas id="moon" width="300" height="300"></canvas>
+    <div class="phase-line" id="phaseLabel"></div>
 
-<p id="full"></p>
-<p id="new"></p>
+    <div class="meta">
+      <div id="untilFull"></div>
+      <div id="untilNew"></div>
+    </div>
 
-<div class="calendar" id="calendar"></div>
+    <section class="card">
+      <div class="cal-head">
+        <div class="title" id="monthTitle"></div>
+        <div class="btns">
+          <button id="prevBtn" type="button">Prev</button>
+          <button id="nextBtn" type="button">Next</button>
+        </div>
+      </div>
+
+      <div class="weekdays">
+        <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+      </div>
+
+      <div class="grid" id="calendarGrid"></div>
+
+      <div class="explain">
+        <h2 id="holisticTitle">Reflection</h2>
+        <p id="holisticText"></p>
+      </div>
+    </section>
+
+    <footer>
+      Minimal black-on-white. Phase is a practical approximation (synodic month).
+    </footer>
+  </div>
 
 <script>
+/**
+ * Practical moon phase approximation:
+ * phase in [0,1): 0 = New Moon, 0.5 = Full Moon
+ * Uses synodic month + a common epoch near 2000-01-06 18:14 UTC.
+ */
+const Moon = (() => {
+  const synodicMonth = 29.53058867; // days
+  const epoch = new Date(Date.UTC(2000,0,6,18,14,0));
 
-const synodicMonth = 29.53058867;
-const epoch = new Date(Date.UTC(2000,0,6,18,14,0));
+  function phase(date){
+    const ms = date.getTime() - epoch.getTime();
+    const days = ms / 86400000;
+    const lunations = days / synodicMonth;
+    let frac = lunations - Math.floor(lunations);
+    if (frac < 0) frac += 1;
+    return frac;
+  }
 
-function phase(date){
-let days=(date-epoch)/86400000;
-let lun=days/synodicMonth;
-let frac=lun-Math.floor(lun);
-if(frac<0)frac+=1;
-return frac;
+  function illumination(phase){ // 0..1
+    return 0.5 * (1 - Math.cos(2 * Math.PI * phase));
+  }
+
+  function daysUntilNewMoon(date){
+    const p = phase(date);
+    return Math.max(0, Math.round((1 - p) * synodicMonth));
+  }
+
+  function daysUntilFullMoon(date){
+    const p = phase(date);
+    let delta = (0.5 - p);
+    if (delta < 0) delta = 1 + delta;
+    return Math.max(0, Math.round(delta * synodicMonth));
+  }
+
+  function phaseName(p){
+    // Map to 8 phases (simple + readable)
+    const names = [
+      "New Moon",
+      "Waxing Crescent",
+      "First Quarter",
+      "Waxing Gibbous",
+      "Full Moon",
+      "Waning Gibbous",
+      "Last Quarter",
+      "Waning Crescent"
+    ];
+    // 0..1 -> 0..8
+    const idx = Math.floor(((p + 1/16) % 1) * 8); // small offset so boundaries feel nicer
+    return names[idx];
+  }
+
+  return { phase, illumination, daysUntilNewMoon, daysUntilFullMoon, phaseName };
+})();
+
+/**
+ * Draw a clean moon with:
+ * - thicker outline
+ * - correct waxing/waning orientation
+ * - subtle crater texture (still black/white)
+ */
+function drawMoon(canvas, phase, opts = {}){
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  const cx = w/2, cy = h/2;
+  const r = Math.min(w,h) * 0.44;
+
+  ctx.clearRect(0,0,w,h);
+
+  const outline = opts.outline ?? Math.max(5, r * 0.02); // thicker line
+
+  // Outer outline
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = outline;
+  ctx.stroke();
+
+  // Base disc (white)
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - outline*0.6, 0, Math.PI*2);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+
+  // Clip inside moon
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - outline*0.6, 0, Math.PI*2);
+  ctx.clip();
+
+  // Subtle crater texture (very light gray)
+  if (opts.texture !== false){
+    ctx.globalAlpha = 0.10;
+    for (let i=0; i<22; i++){
+      const ang = Math.random() * Math.PI*2;
+      const rad = (Math.random() * 0.85) * (r - outline);
+      const x = cx + Math.cos(ang) * rad;
+      const y = cy + Math.sin(ang) * rad;
+      const cr = (Math.random()*0.06 + 0.015) * r;
+      ctx.beginPath();
+      ctx.ellipse(x, y, cr*1.1, cr, Math.random(), 0, Math.PI*2);
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = Math.max(1, outline*0.18);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Shadow geometry
+  const illum = Moon.illumination(phase); // 0..1
+  const shadow = 1 - illum;              // 1 full shadow, 0 none
+
+  // Waxing vs waning flips the terminator direction
+  const dir = (phase <= 0.5) ? 1 : -1;
+  const offset = dir * (shadow - 0.5) * (r * 2) * 1.25;
+
+  // Shadow fill (black)
+  ctx.beginPath();
+  ctx.ellipse(cx + offset, cy, r, r, 0, 0, Math.PI*2);
+  ctx.fillStyle = "#000";
+  ctx.fill();
+
+  ctx.restore();
 }
 
-function daysUntilFull(date){
-let p=phase(date);
-let d=(0.5-p);
-if(d<0)d=1+d;
-return Math.round(d*synodicMonth);
+/** Mini moons: no texture, slightly thinner outline */
+function drawMiniMoon(canvas, phase){
+  drawMoon(canvas, phase, { outline: 4, texture: false });
 }
 
-function daysUntilNew(date){
-let p=phase(date);
-return Math.round((1-p)*synodicMonth);
+function fmtFullDateEN(d){
+  return new Intl.DateTimeFormat("en-US", { dateStyle:"full" }).format(d);
+}
+function fmtMonthEN(d){
+  const s = new Intl.DateTimeFormat("en-US", { month:"long", year:"numeric" }).format(d);
+  return s;
+}
+function startOfMonth(date){ return new Date(date.getFullYear(), date.getMonth(), 1); }
+function endOfMonth(date){ return new Date(date.getFullYear(), date.getMonth()+1, 0); }
+
+// Monday-first index: Mon=0..Sun=6
+function mondayFirstWeekdayIndex(date){
+  const js = date.getDay(); // Sun=0..Sat=6
+  return (js + 6) % 7;
+}
+function sameDay(a,b){
+  return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
 }
 
-function drawMoon(canvas,p){
-
-let ctx=canvas.getContext("2d");
-let w=canvas.width;
-let r=w/2;
-
-ctx.clearRect(0,0,w,w);
-
-ctx.beginPath();
-ctx.arc(r,r,r-2,0,Math.PI*2);
-ctx.stroke();
-
-ctx.beginPath();
-ctx.arc(r,r,r-2,0,Math.PI*2);
-ctx.fillStyle="white";
-ctx.fill();
-
-let illum=0.5*(1-Math.cos(2*Math.PI*p));
-let shadow=1-illum;
-
-let offset=(shadow-0.5)*w*1.2;
-
-ctx.save();
-
-ctx.beginPath();
-ctx.arc(r,r,r-2,0,Math.PI*2);
-ctx.clip();
-
-ctx.beginPath();
-ctx.ellipse(r+offset,r,r,r,0,0,Math.PI*2);
-ctx.fillStyle="black";
-ctx.fill();
-
-ctx.restore();
-}
+/** Holistic, calm descriptions by phase name */
+const HOLISTIC = {
+  "New Moon": {
+    title: "New Moon — reset",
+    text: "Quiet beginnings. A good moment to simplify, set an intention, and listen inward before you act."
+  },
+  "Waxing Crescent": {
+    title: "Waxing Crescent — growth",
+    text: "Small steps count. Build momentum with gentle routines and one clear next action."
+  },
+  "First Quarter": {
+    title: "First Quarter — commitment",
+    text: "Decisions sharpen focus. Choose what matters, set boundaries, and move through resistance with steadiness."
+  },
+  "Waxing Gibbous": {
+    title: "Waxing Gibbous — refine",
+    text: "Adjust the details. Edit, practice, and prepare—progress is often a series of small improvements."
+  },
+  "Full Moon": {
+    title: "Full Moon — illuminate",
+    text: "Clarity and emotion rise. Celebrate what’s working, release what’s heavy, and be honest with yourself."
+  },
+  "Waning Gibbous": {
+    title: "Waning Gibbous — integrate",
+    text: "Digest lessons. Share, reflect, and make meaning of what you’ve learned before the next cycle."
+  },
+  "Last Quarter": {
+    title: "Last Quarter — let go",
+    text: "Simplify and clean house. End what’s complete, forgive what you can, and keep only what supports you."
+  },
+  "Waning Crescent": {
+    title: "Waning Crescent — rest",
+    text: "Restore your energy. Sleep, soften, and reset your nervous system—emptiness makes space for renewal."
+  }
+};
 
 function render(){
+  const today = new Date();
+  document.getElementById("todayLabel").textContent = fmtFullDateEN(today);
 
-let today=new Date();
+  const p = Moon.phase(today);
+  const illum = Moon.illumination(p);
+  const name = Moon.phaseName(p);
 
-document.getElementById("date").innerText=
-today.toLocaleDateString("nl-NL",{dateStyle:"full"});
+  drawMoon(document.getElementById("bigMoon"), p);
 
-let p=phase(today);
+  document.getElementById("phaseLabel").textContent =
+    `${name} · ${Math.round(illum*100)}% illuminated`;
 
-drawMoon(document.getElementById("moon"),p);
+  document.getElementById("untilFull").textContent =
+    `Next Full Moon in ${Moon.daysUntilFullMoon(today)} days`;
 
-document.getElementById("full").innerText=
-daysUntilFull(today)+" dagen tot volle maan";
+  document.getElementById("untilNew").textContent =
+    `Next New Moon in ${Moon.daysUntilNewMoon(today)} days`;
 
-document.getElementById("new").innerText=
-daysUntilNew(today)+" dagen tot nieuwe maan";
+  // Holistic text
+  const h = HOLISTIC[name] ?? { title: "Reflection", text: "Notice what this phase brings up for you." };
+  document.getElementById("holisticTitle").textContent = h.title;
+  document.getElementById("holisticText").textContent = h.text;
 
+  renderCalendar();
 }
 
+let shownMonth = new Date();
+
+function renderCalendar(){
+  const grid = document.getElementById("calendarGrid");
+  grid.innerHTML = "";
+
+  document.getElementById("monthTitle").textContent = fmtMonthEN(shownMonth);
+
+  const first = startOfMonth(shownMonth);
+  const last = endOfMonth(shownMonth);
+  const lead = mondayFirstWeekdayIndex(first);
+
+  for(let i=0;i<lead;i++){
+    const div = document.createElement("div");
+    div.className = "cell";
+    div.style.visibility = "hidden";
+    grid.appendChild(div);
+  }
+
+  const today = new Date();
+  for(let day=1; day<=last.getDate(); day++){
+    const d = new Date(shownMonth.getFullYear(), shownMonth.getMonth(), day);
+    const cell = document.createElement("div");
+    cell.className = "cell" + (sameDay(d,today) ? " today" : "");
+
+    const dayLabel = document.createElement("div");
+    dayLabel.className = "day";
+    dayLabel.textContent = String(day);
+
+    const mini = document.createElement("canvas");
+    mini.className = "mini";
+    mini.width = 64; mini.height = 64;
+
+    drawMiniMoon(mini, Moon.phase(d));
+
+    cell.appendChild(dayLabel);
+    cell.appendChild(mini);
+    grid.appendChild(cell);
+  }
+}
+
+document.getElementById("prevBtn").addEventListener("click", () => {
+  shownMonth = new Date(shownMonth.getFullYear(), shownMonth.getMonth()-1, 1);
+  renderCalendar();
+});
+
+document.getElementById("nextBtn").addEventListener("click", () => {
+  shownMonth = new Date(shownMonth.getFullYear(), shownMonth.getMonth()+1, 1);
+  renderCalendar();
+});
+
 render();
-
 </script>
-
 </body>
 </html>

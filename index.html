@@ -4,7 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Moon Calendar</title>
-  <meta name="theme-color" content="#0b0e14">
+
+  <!-- iPhone / PWA basics -->
+  <meta name="theme-color" content="#0b0e14" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Moon Calendar">
 
   <style>
     :root{
@@ -12,76 +17,110 @@
       --panel:#0f1830; --panelBorder:#2a3c66;
       --text:#e7eeff; --muted:#b1c2ea; --hint:#8ea4d8;
       --accent:#87a7ff; --explain:#d9e4ff; --shadow:rgba(0,0,0,.35);
+
       --gold1:#fff7cc; --gold2:#f7d774; --gold3:#e0b94d; --gold4:#b88922; --gold5:#2a1d04;
+
+      --r: 16px;
+      --tap: 44px; /* iOS comfortable tap target */
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
-    body{ margin:0; background:var(--bg); color:var(--text); }
+
+    *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      -webkit-text-size-adjust: 100%;
+    }
+
     .wrap{
-      max-width: 980px; margin: 0 auto; padding: 16px;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 16px;
       padding-top: calc(16px + env(safe-area-inset-top));
       padding-bottom: calc(16px + env(safe-area-inset-bottom));
     }
+
     .card{
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: var(--r);
       padding: 16px;
       box-shadow: 0 10px 30px var(--shadow);
     }
-    h1{ font-size: 20px; margin: 0 0 6px; }
-    p{ margin: 8px 0; color: var(--muted); line-height: 1.45; font-size: 14px; }
-    .title{ font-size: 18px; font-weight: 650; margin: 0 0 6px; }
-    .hint{ font-size: 12px; color: var(--hint); line-height: 1.35; margin-top: 8px; }
+
+    header{
+      display:flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    h1{
+      font-size: clamp(18px, 2.2vw, 22px);
+      margin: 0;
+      letter-spacing: .2px;
+    }
+
+    .mono{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 0;
+    }
+
     .panel{
       background: var(--panel);
       border: 1px solid var(--panelBorder);
       border-radius: 12px;
       padding: 12px;
+      min-width: 0;
     }
-    .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
-    @media (max-width: 860px){ .grid2{ grid-template-columns: 1fr; } }
 
-    .btnRow{ display:flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-    button{
-      border-radius: 12px; border: 1px solid var(--panelBorder);
-      background: #152449; color: var(--text);
-      padding: 8px 12px; font-size: 14px; cursor:pointer;
+    .grid2{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: start;
     }
-    button:hover{ filter: brightness(1.08); }
-
-    .chip{
-      display:inline-flex; align-items:center; gap:8px;
-      padding: 4px 10px; border: 1px solid var(--panelBorder);
-      border-radius: 999px; background: #0b1020; color: var(--muted);
-      font-size: 12px; white-space: nowrap;
-    }
-    .dot{
-      width:8px; height:8px; border-radius:999px;
-      background: var(--accent);
-      box-shadow: 0 0 0 2px rgba(135,167,255,.18);
-    }
-    .mono{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size: 12px; color: var(--muted);
+    @media (max-width: 900px){
+      .grid2{ grid-template-columns: 1fr; }
     }
 
     /* Moon stage */
-    .moonStage{ display:flex; flex-direction: column; align-items:center; gap: 10px; padding: 10px 8px 2px; }
+    .moonStage{
+      display:flex;
+      flex-direction: column;
+      align-items:center;
+      gap: 10px;
+      padding: 10px 8px 2px;
+    }
+
     .moonWrap{
       position:relative;
-      width: 300px; height: 300px;
+      width: min(320px, 74vw);
+      aspect-ratio: 1 / 1;
       border-radius: 999px;
     }
+
     canvas#bigMoon{
-      width: 300px; height: 300px;
-      display:block; border-radius: 999px;
-      position:relative; z-index:2;
+      width: 100%;
+      height: 100%;
+      display:block;
+      border-radius: 999px;
+      position:relative;
+      z-index:2;
     }
+
     .glow{
-      position:absolute; inset:-16px;
+      position:absolute;
+      inset:-18px;
       border-radius: 999px;
       background: radial-gradient(circle at 40% 35%, rgba(224,185,77,.35), rgba(224,185,77,0) 60%);
-      filter: blur(6px);
+      filter: blur(7px);
       opacity: 0;
       transition: opacity .25s ease;
       z-index:1;
@@ -89,40 +128,152 @@
     }
     .glow.on{ opacity: 1; }
 
-    .kpis{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 8px; }
-    @media (max-width: 520px){ .kpis{ grid-template-columns: 1fr; } }
-    .kpi{
-      background: #0b1020; border: 1px solid var(--panelBorder);
-      border-radius: 12px; padding: 10px 12px;
+    .phaseLine{
+      text-align:center;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
     }
-    .kpi .label{ font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-    .kpi .value{ font-size: 16px; color: var(--explain); font-weight: 650; }
+
+    .kpis{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      width: 100%;
+      margin-top: 8px;
+    }
+    @media (max-width: 520px){
+      .kpis{ grid-template-columns: 1fr; }
+    }
+
+    .kpi{
+      background: #0b1020;
+      border: 1px solid var(--panelBorder);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .kpi .label{
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .kpi .value{
+      font-size: 16px;
+      color: var(--explain);
+      font-weight: 650;
+    }
+
+    .hint{
+      font-size: 12px;
+      color: var(--hint);
+      line-height: 1.35;
+      margin-top: 8px;
+      text-align:center;
+    }
+
+    /* Buttons (iPhone-friendly) */
+    .calHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .title{
+      font-size: 18px;
+      font-weight: 650;
+      margin: 0;
+    }
+
+    .btnRow{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button{
+      min-height: var(--tap);
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--panelBorder);
+      background: #152449;
+      color: var(--text);
+      font-size: 15px;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button:active{ transform: translateY(1px); }
+    button:hover{ filter: brightness(1.08); }
 
     /* Calendar */
-    .calHead{ display:flex; align-items:center; justify-content:space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
     .weekdays{
-      display:grid; grid-template-columns: repeat(7, 1fr);
-      gap: 8px; margin-bottom: 8px;
-      color: var(--muted); font-size: 12px; font-weight: 650; text-align:center;
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+      text-align:center;
     }
-    .calGrid{ display:grid; grid-template-columns: repeat(7, 1fr); gap: 10px 8px; }
+
+    .calGrid{
+      display:grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 10px 8px;
+    }
+
+    /* Bigger cells on iPhone */
     .cell{
-      height: 72px; border-radius: 12px; border: 1px solid transparent;
-      display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-      gap: 7px; padding-top: 8px; cursor:pointer; user-select:none;
+      min-height: 76px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      gap: 8px;
+      padding: 10px 8px 8px;
+      cursor:pointer;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
     }
-    .cell:hover{ border-color: rgba(135,167,255,.35); background: rgba(15,24,48,.35); }
-    .cell.today{ border-color: rgba(135,167,255,.55); background: rgba(15,24,48,.55); }
-    .cell.selected{ border-color: rgba(135,167,255,.95); background: rgba(15,24,48,.75); }
+    .cell:hover{
+      border-color: rgba(135,167,255,.35);
+      background: rgba(15,24,48,.35);
+    }
+    .cell:active{
+      border-color: rgba(135,167,255,.55);
+      background: rgba(15,24,48,.55);
+    }
+    .cell.today{
+      border-color: rgba(135,167,255,.55);
+      background: rgba(15,24,48,.55);
+    }
+    .cell.selected{
+      border-color: rgba(135,167,255,.95);
+      background: rgba(15,24,48,.75);
+    }
 
     .dayRow{
       width: 100%;
       display:flex;
       align-items:center;
       justify-content:space-between;
-      padding: 0 10px;
+      gap: 8px;
+      padding: 0 4px;
     }
-    .day{ font-size: 12px; font-weight: 700; color: var(--text); line-height: 1; }
+
+    .day{
+      font-size: 13px;
+      font-weight: 750;
+      color: var(--text);
+      line-height: 1;
+    }
+
     .badge{
       font-size: 10px;
       padding: 2px 6px;
@@ -131,33 +282,86 @@
       color: rgba(255,247,204,.95);
       background: rgba(224,185,77,.10);
       letter-spacing: .2px;
+      flex: 0 0 auto;
     }
 
-    canvas.mini{ width: 18px; height: 18px; display:block; border-radius: 999px; }
+    canvas.mini{
+      width: 20px;
+      height: 20px;
+      display:block;
+      border-radius: 999px;
+    }
 
-    .detailRow{ display:flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-    .msgTitle{ font-size: 13px; color: var(--accent); font-weight: 650; margin-top: 10px; }
-    .msgBody{ margin-top: 10px; color: var(--explain); font-size: 16px; line-height: 1.8; max-width: 44rem; }
+    /* Detail / holistic */
+    .msgTitle{
+      font-size: 13px;
+      color: var(--accent);
+      font-weight: 650;
+      margin-top: 12px;
+    }
+    .msgBody{
+      margin-top: 10px;
+      color: var(--explain);
+      font-size: 16px;
+      line-height: 1.75;
+      max-width: 44rem;
+    }
 
-    footer{ margin-top: 10px; color: var(--hint); font-size: 12px; }
+    .detailRow{
+      display:flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--panelBorder);
+      border-radius: 999px;
+      background: #0b1020;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .dot{
+      width:8px;
+      height:8px;
+      border-radius:999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 2px rgba(135,167,255,.18);
+      flex: 0 0 auto;
+    }
+
+    footer{
+      margin-top: 10px;
+      color: var(--hint);
+      font-size: 12px;
+      line-height: 1.45;
+    }
   </style>
 </head>
 
 <body>
   <div class="wrap">
     <div class="card">
-      <h1>Moon Calendar</h1>
-      <p class="mono" id="todayLabel">—</p>
+      <header>
+        <h1>Moon Calendar</h1>
+        <p class="mono" id="todayLabel">—</p>
+      </header>
 
       <div class="grid2">
-        <!-- LEFT -->
-        <div class="panel">
+        <!-- LEFT: Big moon -->
+        <section class="panel">
           <div class="moonStage">
             <div class="moonWrap">
               <div class="glow" id="glow"></div>
               <canvas id="bigMoon" width="700" height="700" aria-label="Moon phase"></canvas>
             </div>
-            <div class="mono" id="phaseLabel">—</div>
+
+            <div class="phaseLine" id="phaseLabel">—</div>
 
             <div class="kpis">
               <div class="kpi">
@@ -171,13 +375,13 @@
             </div>
 
             <div class="hint">
-              Accurate phase (Julian Day). New = fully black · Full = fully gold · Quarters = exactly half.
+              Calendar icons use local <b>12:00</b> (noon) so the day matches what you usually see in the sky.
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- RIGHT -->
-        <div class="panel">
+        <!-- RIGHT: Calendar -->
+        <section class="panel">
           <div class="calHead">
             <div class="title" id="monthTitle">—</div>
             <div class="btnRow">
@@ -200,17 +404,19 @@
             <span class="chip"><span class="dot" style="background: rgba(224,185,77,.9); box-shadow:0 0 0 2px rgba(224,185,77,.18)"></span><span id="selectedPhasePill">Phase: —</span></span>
             <span class="chip"><span class="dot" style="background: rgba(0,0,0,.9); box-shadow:0 0 0 2px rgba(0,0,0,.18)"></span><span id="selectedIllumPill">Illumination: —</span></span>
           </div>
-        </div>
+        </section>
       </div>
 
-      <footer>Tip: If you want “Amsterdam local” exact timestamps for full/new, I can add a small offline approximation too.</footer>
+      <footer>
+        New Moon = fully black · Full Moon = fully gold · Quarters are exactly half.  
+        If you want, I can add an “Add to Home Screen” icon/manifest next.
+      </footer>
     </div>
   </div>
 
 <script>
 /* =========================
    Accurate-ish Moon phase (Julian Day)
-   Reference new moon: JD 2451550.1
 ========================= */
 const Moon = (() => {
   const SYNODIC_MONTH = 29.530588853;
@@ -224,11 +430,11 @@ const Moon = (() => {
     const jd = julianDate(date);
     let p = ((jd - KNOWN_NEW_MOON_JD) / SYNODIC_MONTH) % 1;
     if (p < 0) p += 1;
-    return p; // [0,1)
+    return p;
   }
 
   function illumination(p){
-    return 0.5 * (1 - Math.cos(2 * Math.PI * p)); // 0..1
+    return 0.5 * (1 - Math.cos(2 * Math.PI * p));
   }
 
   function daysUntilNewMoon(date){
@@ -262,13 +468,38 @@ const Moon = (() => {
 })();
 
 /* =========================
-   Gold + Black Moon renderer
-   Robust: draw gold disc, then draw black "shadow terminator" correctly.
-   Uses TWO strategies:
-   - crescents/gibbous using ellipse-width trick (stable)
-   - exact quarters and extremes forced
+   Helpers
 ========================= */
-function drawMoonGold(canvas, p, opts = {}) {
+function getCss(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function fmtFullDateEN(d){
+  return new Intl.DateTimeFormat("en-US", { dateStyle:"full" }).format(d);
+}
+function fmtMonthEN(d){
+  return new Intl.DateTimeFormat("en-US", { month:"long", year:"numeric" }).format(d);
+}
+function fmtShortEN(d){
+  return new Intl.DateTimeFormat("en-US", { year:"numeric", month:"short", day:"numeric" }).format(d);
+}
+function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
+function sameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+// Monday-first index: Mon=0..Sun=6
+function mondayFirstWeekdayIndex(date){ const js=date.getDay(); return (js+6)%7; }
+function isoDate(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${da}`;
+}
+// For “what you see that day”: use local noon
+function dayAtNoon(d){
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0);
+}
+
+/* =========================
+   Big moon: 3D gold + black
+========================= */
+function drawMoonGoldBig(canvas, p, opts = {}) {
   const ctx = canvas.getContext("2d");
   const w = canvas.width, h = canvas.height;
   const cx = w/2, cy = h/2;
@@ -278,7 +509,6 @@ function drawMoonGold(canvas, p, opts = {}) {
 
   const outline = opts.outline ?? 14;
 
-  // Gold gradient
   const gold = ctx.createRadialGradient(
     cx - R*0.35, cy - R*0.45, R*0.08,
     cx, cy, R*1.08
@@ -289,13 +519,13 @@ function drawMoonGold(canvas, p, opts = {}) {
   gold.addColorStop(0.72, getCss("--gold4"));
   gold.addColorStop(1.00, getCss("--gold5"));
 
-  // Base gold disc
+  // gold disc
   ctx.beginPath();
   ctx.arc(cx, cy, R, 0, Math.PI*2);
   ctx.fillStyle = gold;
   ctx.fill();
 
-  // Gloss
+  // gloss
   const shine = ctx.createRadialGradient(
     cx - R*0.55, cy - R*0.60, 1,
     cx - R*0.25, cy - R*0.30, R*0.95
@@ -308,7 +538,7 @@ function drawMoonGold(canvas, p, opts = {}) {
   ctx.fillStyle = shine;
   ctx.fill();
 
-  // Rim
+  // rim
   ctx.beginPath();
   ctx.arc(cx, cy, R, 0, Math.PI*2);
   ctx.lineWidth = outline;
@@ -317,14 +547,14 @@ function drawMoonGold(canvas, p, opts = {}) {
 
   const r = R - outline*0.55;
 
-  // Clip to inner circle
+  // clip inside
   ctx.save();
   ctx.translate(cx, cy);
   ctx.beginPath();
   ctx.arc(0,0,r,0,Math.PI*2);
   ctx.clip();
 
-  // Optional subtle texture
+  // subtle texture
   if (opts.texture) {
     ctx.globalAlpha = 0.08;
     for (let i=0;i<14;i++){
@@ -342,68 +572,32 @@ function drawMoonGold(canvas, p, opts = {}) {
     ctx.globalAlpha = 1;
   }
 
+  // Shadow with ellipse terminator (stable)
   const illum = Moon.illumination(p);
-
-  // Hard clamp extremes (prevents artifacts)
-  if (illum <= 0.002) {
-    // New Moon: fully black
+  if (illum <= 0.002){
     ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2);
     ctx.fillStyle = "#000"; ctx.fill();
     ctx.restore();
     return;
   }
-  if (illum >= 0.998) {
-    // Full Moon: leave gold
+  if (illum >= 0.998){
     ctx.restore();
     return;
   }
 
-  // Ensure quarters are EXACT half visually
-  // If phase is near 0.25 or 0.75, force a clean half.
-  const nearQuarter = (x) => Math.abs(x) < 0.006;
-  const pFromQuarter = Math.min(Math.abs(p-0.25), Math.abs(p-0.75), Math.abs((p+1)-0.25), Math.abs((p+1)-0.75));
-  if (pFromQuarter < 0.006) {
-    // Waxing quarter => right half lit (shadow on left)
-    // Waning quarter => left half lit (shadow on right)
-    const waxing = p < 0.5;
-    ctx.fillStyle = "#000";
-    ctx.beginPath();
-    if (waxing) {
-      // shadow left half
-      ctx.rect(-r, -r, r, 2*r);
-    } else {
-      // shadow right half
-      ctx.rect(0, -r, r, 2*r);
-    }
-    ctx.fill();
-    ctx.restore();
-    return;
-  }
-
-  // General case: draw shadow using ellipse “terminator” width
-  // k goes from +1 (new) to -1 (full)
   const k = Math.cos(2 * Math.PI * p);
-
-  // Width of the shadow ellipse: abs(k)*r gives correct progression
   const a = Math.abs(k) * r;
-
-  // Direction:
-  // Waxing (p<0.5): light on right => shadow on left
-  // Waning (p>0.5): light on left => shadow on right
-  const shadowOnLeft = (p < 0.5);
+  const waxing = (p < 0.5); // waxing => light right => shadow left
 
   ctx.fillStyle = "#000";
   ctx.beginPath();
-
-  // We fill the shadow area as: half-disc + ellipse to form terminator
-  // For waxing: shadow occupies LEFT side; for waning: RIGHT side
-  if (shadowOnLeft) {
-    // left half + ellipse (terminator)
-    ctx.arc(0, 0, r, Math.PI/2, -Math.PI/2, true);        // left semicircle boundary (CCW)
+  if (waxing){
+    // shadow left
+    ctx.arc(0, 0, r, Math.PI/2, -Math.PI/2, true);
     ctx.ellipse(0, 0, a, r, 0, -Math.PI/2, Math.PI/2, false);
   } else {
-    // right half + ellipse (terminator)
-    ctx.arc(0, 0, r, -Math.PI/2, Math.PI/2, true);        // right semicircle boundary (CCW)
+    // shadow right
+    ctx.arc(0, 0, r, -Math.PI/2, Math.PI/2, true);
     ctx.ellipse(0, 0, a, r, 0, Math.PI/2, -Math.PI/2, false);
   }
   ctx.closePath();
@@ -412,39 +606,79 @@ function drawMoonGold(canvas, p, opts = {}) {
   ctx.restore();
 }
 
-function drawMini(canvas, p){
-  drawMoonGold(canvas, p, { outline: 6, texture: false });
-}
+/* =========================
+   Calendar moon: HIGH CONTRAST (readable)
+   Base black; lit part gold; uses noon phase for “observed” day.
+========================= */
+function drawMiniMoonObserved(canvas, p){
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  const cx = w/2, cy = h/2;
+  const r = Math.min(w,h) * 0.42;
 
-function getCss(name){
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  ctx.clearRect(0,0,w,h);
+
+  // gold rim
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI*2);
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = getCss("--gold3");
+  ctx.stroke();
+
+  const inner = r - 3;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, inner, 0, Math.PI*2);
+  ctx.clip();
+
+  // base = black
+  ctx.beginPath();
+  ctx.arc(cx, cy, inner, 0, Math.PI*2);
+  ctx.fillStyle = "#000";
+  ctx.fill();
+
+  const illum = Moon.illumination(p);
+  if (illum >= 0.998){
+    ctx.beginPath();
+    ctx.arc(cx, cy, inner, 0, Math.PI*2);
+    ctx.fillStyle = getCss("--gold3");
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+  if (illum <= 0.002){
+    ctx.restore();
+    return;
+  }
+
+  // terminator
+  const k = Math.cos(2*Math.PI*p);
+  const a = Math.abs(k) * inner;
+  const waxing = p < 0.5;
+
+  ctx.fillStyle = getCss("--gold3");
+  ctx.beginPath();
+
+  if (waxing){
+    // light right
+    ctx.arc(cx, cy, inner, -Math.PI/2, Math.PI/2, false);
+    ctx.ellipse(cx, cy, a, inner, 0, Math.PI/2, -Math.PI/2, false);
+  } else {
+    // light left
+    ctx.arc(cx, cy, inner, Math.PI/2, -Math.PI/2, false);
+    ctx.ellipse(cx, cy, a, inner, 0, -Math.PI/2, Math.PI/2, false);
+  }
+
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
 }
 
 /* =========================
-   Calendar + UI
+   Calendar tags (major phases)
 ========================= */
-function fmtFullDateEN(d){
-  return new Intl.DateTimeFormat("en-US", { dateStyle:"full" }).format(d);
-}
-function fmtMonthEN(d){
-  return new Intl.DateTimeFormat("en-US", { month:"long", year:"numeric" }).format(d);
-}
-function fmtShortEN(d){
-  return new Intl.DateTimeFormat("en-US", { year:"numeric", month:"short", day:"numeric" }).format(d);
-}
-
-function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
-function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
-function sameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
-function mondayFirstWeekdayIndex(date){ const js=date.getDay(); return (js+6)%7; }
-function isoDate(d){
-  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0');
-  return `${y}-${m}-${da}`;
-}
-
-// Mark “big” phases in calendar
 function majorPhaseTag(p){
-  // nearest of: 0 (NEW), 0.25 (FQ), 0.5 (FULL), 0.75 (LQ)
   const targets = [
     {t:0.00, tag:"NEW"},
     {t:0.25, tag:"FQ"},
@@ -456,9 +690,13 @@ function majorPhaseTag(p){
     const d = Math.min(Math.abs(p-x.t), Math.abs((p+1)-x.t), Math.abs(p-(x.t+1)));
     if (d < best.d) best = {d, tag:x.tag};
   }
-  return (best.d < 0.012) ? best.tag : ""; // threshold ~0.35 day
+  // threshold ~0.35 day
+  return (best.d < 0.012) ? best.tag : "";
 }
 
+/* =========================
+   Holistic text
+========================= */
 const HOLISTIC = {
   "New Moon": { title:"New Moon — reset", text:"A quiet beginning. Set an intention, simplify, and listen inward before you act." },
   "Waxing Crescent": { title:"Waxing Crescent — grow", text:"Build momentum with small steps. Gentle routines and one clear next action." },
@@ -470,13 +708,16 @@ const HOLISTIC = {
   "Waning Crescent": { title:"Waning Crescent — rest", text:"Restore your energy. Slow down, sleep, soften—emptiness makes room for renewal." }
 };
 
+/* =========================
+   App state + render
+========================= */
 let shownMonth = new Date();
 let selectedISO = null;
 
 function updateSelection(date){
   selectedISO = isoDate(date);
 
-  const p = Moon.phase(date);
+  const p = Moon.phase(dayAtNoon(date));          // noon for the selected day too
   const illum = Moon.illumination(p);
   const name = Moon.phaseName(p);
 
@@ -492,34 +733,33 @@ function updateSelection(date){
 }
 
 function renderTop(){
-  const today = new Date();
-  document.getElementById("todayLabel").textContent = fmtFullDateEN(today);
+  const now = new Date();
+  document.getElementById("todayLabel").textContent = fmtFullDateEN(now);
 
-  const p = Moon.phase(today);
-  const illum = Moon.illumination(p);
-  const name = Moon.phaseName(p);
+  // big moon: use current time
+  const pNow = Moon.phase(now);
+  const illumNow = Moon.illumination(pNow);
+  const nameNow = Moon.phaseName(pNow);
 
-  drawMoonGold(document.getElementById("bigMoon"), p, { outline: 14, texture: true });
+  drawMoonGoldBig(document.getElementById("bigMoon"), pNow, { outline: 14, texture: true });
 
   document.getElementById("phaseLabel").textContent =
-    `${name} · ${Math.floor(illum*100)}% illuminated`;
+    `${nameNow} · ${Math.floor(illumNow*100)}% illuminated`;
 
   document.getElementById("untilFull").textContent =
-    `in ${Moon.daysUntilFullMoon(today)} days`;
+    `in ${Moon.daysUntilFullMoon(now)} days`;
 
   document.getElementById("untilNew").textContent =
-    `in ${Moon.daysUntilNewMoon(today)} days`;
+    `in ${Moon.daysUntilNewMoon(now)} days`;
 
-  // glow only when very full
-  const glow = document.getElementById("glow");
-  glow.classList.toggle("on", illum >= 0.985);
+  document.getElementById("glow").classList.toggle("on", illumNow >= 0.985);
 
-  updateSelection(today);
+  // default selection: today
+  updateSelection(now);
 }
 
 function renderCalendar(){
   document.getElementById("monthTitle").textContent = fmtMonthEN(shownMonth);
-
   const grid = document.getElementById("calendarGrid");
   grid.innerHTML = "";
 
@@ -535,14 +775,17 @@ function renderCalendar(){
   }
 
   const today = new Date();
+
   for(let day=1; day<=last.getDate(); day++){
     const d = new Date(shownMonth.getFullYear(), shownMonth.getMonth(), day);
-    const p = Moon.phase(d);
+
+    const p = Moon.phase(dayAtNoon(d)); // ✅ key: noon for observed day
     const tag = majorPhaseTag(p);
 
     const cell = document.createElement("div");
     const isToday = sameDay(d, today);
     const isSelected = selectedISO && isoDate(d) === selectedISO;
+
     cell.className = "cell" + (isToday ? " today" : "") + (isSelected ? " selected" : "");
 
     const dayRow = document.createElement("div");
@@ -562,17 +805,22 @@ function renderCalendar(){
 
     const mini = document.createElement("canvas");
     mini.className = "mini";
-    mini.width = 64; mini.height = 64;
-    drawMini(mini, p);
+    mini.width = 64;
+    mini.height = 64;
+    drawMiniMoonObserved(mini, p);
 
     cell.appendChild(dayRow);
     cell.appendChild(mini);
+
     cell.addEventListener("click", () => updateSelection(d));
 
     grid.appendChild(cell);
   }
 }
 
+/* =========================
+   Controls
+========================= */
 document.getElementById("prevBtn").addEventListener("click", () => {
   shownMonth = new Date(shownMonth.getFullYear(), shownMonth.getMonth()-1, 1);
   renderCalendar();
@@ -582,6 +830,9 @@ document.getElementById("nextBtn").addEventListener("click", () => {
   renderCalendar();
 });
 
+/* =========================
+   Init
+========================= */
 renderTop();
 renderCalendar();
 </script>

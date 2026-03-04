@@ -122,9 +122,19 @@
       gap: 6px;
       border-radius: 12px;
       padding-top: 7px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .cell:hover{
+      outline: 1px solid rgba(0,0,0,.18);
+      outline-offset: -1px;
     }
     .cell.today{
       outline: 2px solid rgba(0,0,0,.22);
+      outline-offset: -2px;
+    }
+    .cell.selected{
+      outline: 2px solid rgba(0,0,0,.40);
       outline-offset: -2px;
     }
     .day{
@@ -156,6 +166,24 @@
       font-size: 13px;
       line-height: 1.55;
     }
+    .detail{
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(0,0,0,.18);
+      display:flex;
+      gap: 10px;
+      align-items: baseline;
+      flex-wrap: wrap;
+    }
+    .pill{
+      border: 1px solid var(--hair);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--fg);
+      background: #fff;
+    }
+    .pill.muted{ color: var(--muted); }
 
     footer{
       text-align:center;
@@ -202,15 +230,80 @@
       <div class="explain">
         <h2 id="holisticTitle">Reflection</h2>
         <p id="holisticText"></p>
+
+        <div class="detail">
+          <span class="pill" id="selectedDatePill">Selected: —</span>
+          <span class="pill muted" id="selectedPhasePill">Phase: —</span>
+          <span class="pill muted" id="selectedIllumPill">Illumination: —</span>
+        </div>
       </div>
     </section>
 
     <footer>
-      New Moon = fully dark · Full Moon = fully bright · Everything in between.
+      New Moon = fully dark · Full Moon = fully bright · Quarters are exactly half.
     </footer>
   </div>
 
 <script>
+/**
+ * Practical moon phase approximation:
+ * phase in [0,1): 0 = New Moon, 0.5 = Full Moon
+ * Uses synodic month + a common epoch near 2000-01-06 18:14 UTC.
+ */
+const Moon = (() => {
+  const synodicMonth = 29.53058867; // days
+  const epoch = new Date(Date.UTC(2000,0,6,18,14,0));
+
+  function phase(date){
+    const ms = date.getTime() - epoch.getTime();
+    const days = ms / 86400000;
+    const lunations = days / synodicMonth;
+    let frac = lunations - Math.floor(lunations);
+    if (frac < 0) frac += 1;
+    return frac;
+  }
+
+  function illumination(p){ // 0..1, 0=new, 1=full
+    return 0.5 * (1 - Math.cos(2 * Math.PI * p));
+  }
+
+  function daysUntilNewMoon(date){
+    const p = phase(date);
+    return Math.max(0, Math.round((1 - p) * synodicMonth));
+  }
+
+  function daysUntilFullMoon(date){
+    const p = phase(date);
+    let delta = (0.5 - p);
+    if (delta < 0) delta = 1 + delta;
+    return Math.max(0, Math.round(delta * synodicMonth));
+  }
+
+  function phaseName(p){
+    const names = [
+      "New Moon",
+      "Waxing Crescent",
+      "First Quarter",
+      "Waxing Gibbous",
+      "Full Moon",
+      "Waning Gibbous",
+      "Last Quarter",
+      "Waning Crescent"
+    ];
+    const idx = Math.floor(((p + 1/16) % 1) * 8);
+    return names[idx];
+  }
+
+  return { phase, illumination, daysUntilNewMoon, daysUntilFullMoon, phaseName };
+})();
+
+/**
+ * Correct terminator drawing that guarantees:
+ * - New Moon fully black
+ * - Full Moon fully white
+ * - First/Last Quarter exactly half
+ * - Smooth transition between days
+ */
 function drawMoon(canvas, phase, opts = {}) {
   const ctx = canvas.getContext("2d");
   const w = canvas.width, h = canvas.height;
@@ -234,7 +327,7 @@ function drawMoon(canvas, phase, opts = {}) {
   ctx.fillStyle = "#fff";
   ctx.fill();
 
-  // Work inside the moon
+  // Work inside moon
   ctx.save();
   ctx.translate(cx, cy);
 
@@ -245,17 +338,17 @@ function drawMoon(canvas, phase, opts = {}) {
   ctx.arc(0, 0, rr, 0, Math.PI * 2);
   ctx.clip();
 
-  // Optional subtle grain/texture (still B/W)
+  // Optional subtle grain (very light)
   if (opts.grain) {
     ctx.globalAlpha = 0.06;
     for (let i = 0; i < 18; i++) {
       const ang = Math.random() * Math.PI * 2;
       const rad = (Math.random() * 0.85) * rr;
-      const x = Math.cos(ang) * rad;
-      const y = Math.sin(ang) * rad;
+      const xg = Math.cos(ang) * rad;
+      const yg = Math.sin(ang) * rad;
       const cr = (Math.random() * 0.06 + 0.015) * rr;
       ctx.beginPath();
-      ctx.ellipse(x, y, cr * 1.1, cr, Math.random(), 0, Math.PI * 2);
+      ctx.ellipse(xg, yg, cr * 1.1, cr, Math.random(), 0, Math.PI * 2);
       ctx.strokeStyle = "#000";
       ctx.lineWidth = Math.max(1, outline * 0.16);
       ctx.stroke();
@@ -263,11 +356,11 @@ function drawMoon(canvas, phase, opts = {}) {
     ctx.globalAlpha = 1;
   }
 
-  // --- Correct terminator shadow ---
-  // x = cos(2π phase) gives:
-  // phase 0.0 => x = +1  => fully black (new)
-  // phase 0.25 => x = 0  => half (quarter)
-  // phase 0.5 => x = -1  => fully white (full)
+  // --- Terminator shadow ---
+  // x = cos(2π phase):
+  // phase 0.0 => x=+1 => fully black (new)
+  // phase 0.25 => x=0 => half
+  // phase 0.5 => x=-1 => fully white (full)
   const x = rr * Math.cos(2 * Math.PI * phase);
 
   ctx.fillStyle = "#000";
@@ -283,15 +376,15 @@ function drawMoon(canvas, phase, opts = {}) {
 function drawMiniMoon(canvas, phase){
   drawMoon(canvas, phase, { outline: 4, grain: false });
 }
-function drawMiniMoon(canvas, phase){
-  drawMoon(canvas, phase, { outline: 4, grain: false });
-}
 
 function fmtFullDateEN(d){
   return new Intl.DateTimeFormat("en-US", { dateStyle:"full" }).format(d);
 }
 function fmtMonthEN(d){
   return new Intl.DateTimeFormat("en-US", { month:"long", year:"numeric" }).format(d);
+}
+function fmtShortEN(d){
+  return new Intl.DateTimeFormat("en-US", { year:"numeric", month:"short", day:"numeric" }).format(d);
 }
 function startOfMonth(date){ return new Date(date.getFullYear(), date.getMonth(), 1); }
 function endOfMonth(date){ return new Date(date.getFullYear(), date.getMonth()+1, 0); }
@@ -341,6 +434,34 @@ const HOLISTIC = {
 };
 
 let shownMonth = new Date();
+let selectedISO = null; // "YYYY-MM-DD"
+
+function isoDate(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function setSelected(date){
+  selectedISO = isoDate(date);
+  updateSelectionUI(date);
+  renderCalendar(); // to redraw selection outline
+}
+
+function updateSelectionUI(date){
+  const p = Moon.phase(date);
+  const illum = Moon.illumination(p);
+  const name = Moon.phaseName(p);
+
+  const h = HOLISTIC[name] ?? { title: "Reflection", text: "Notice what this phase brings up for you." };
+  document.getElementById("holisticTitle").textContent = h.title;
+  document.getElementById("holisticText").textContent = h.text;
+
+  document.getElementById("selectedDatePill").textContent = `Selected: ${fmtShortEN(date)}`;
+  document.getElementById("selectedPhasePill").textContent = `Phase: ${name}`;
+  document.getElementById("selectedIllumPill").textContent = `Illumination: ${Math.round(illum*100)}%`;
+}
 
 function render(){
   const today = new Date();
@@ -361,9 +482,8 @@ function render(){
   document.getElementById("untilNew").textContent =
     `Next New Moon in ${Moon.daysUntilNewMoon(today)} days`;
 
-  const h = HOLISTIC[name] ?? { title: "Reflection", text: "Notice what this phase brings up for you." };
-  document.getElementById("holisticTitle").textContent = h.title;
-  document.getElementById("holisticText").textContent = h.text;
+  // default selection: today
+  setSelected(today);
 
   renderCalendar();
 }
@@ -389,7 +509,13 @@ function renderCalendar(){
   for(let day=1; day<=last.getDate(); day++){
     const d = new Date(shownMonth.getFullYear(), shownMonth.getMonth(), day);
     const cell = document.createElement("div");
-    cell.className = "cell" + (sameDay(d,today) ? " today" : "");
+
+    const isToday = sameDay(d,today);
+    const isSelected = (selectedISO && isoDate(d) === selectedISO);
+
+    cell.className = "cell" +
+      (isToday ? " today" : "") +
+      (isSelected ? " selected" : "");
 
     const dayLabel = document.createElement("div");
     dayLabel.className = "day";
@@ -402,6 +528,9 @@ function renderCalendar(){
 
     cell.appendChild(dayLabel);
     cell.appendChild(mini);
+
+    cell.addEventListener("click", () => setSelected(d));
+
     grid.appendChild(cell);
   }
 }

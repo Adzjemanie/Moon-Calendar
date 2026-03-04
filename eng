@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maan</title>
+
+<style>
+body{
+font-family:system-ui;
+background:white;
+color:black;
+text-align:center;
+margin:0;
+padding:30px;
+}
+
+canvas{
+margin:auto;
+display:block;
+}
+
+.calendar{
+max-width:420px;
+margin:auto;
+display:grid;
+grid-template-columns:repeat(7,1fr);
+gap:10px;
+margin-top:20px;
+}
+
+.day{
+font-size:12px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Maan</h1>
+<p id="date"></p>
+
+<canvas id="moon" width="300" height="300"></canvas>
+
+<p id="full"></p>
+<p id="new"></p>
+
+<div class="calendar" id="calendar"></div>
+
+<script>
+
+const synodicMonth = 29.53058867;
+const epoch = new Date(Date.UTC(2000,0,6,18,14,0));
+
+function phase(date){
+let days=(date-epoch)/86400000;
+let lun=days/synodicMonth;
+let frac=lun-Math.floor(lun);
+if(frac<0)frac+=1;
+return frac;
+}
+
+function daysUntilFull(date){
+let p=phase(date);
+let d=(0.5-p);
+if(d<0)d=1+d;
+return Math.round(d*synodicMonth);
+}
+
+function daysUntilNew(date){
+let p=phase(date);
+return Math.round((1-p)*synodicMonth);
+}
+
+function drawMoon(canvas,p){
+
+let ctx=canvas.getContext("2d");
+let w=canvas.width;
+let r=w/2;
+
+ctx.clearRect(0,0,w,w);
+
+ctx.beginPath();
+ctx.arc(r,r,r-2,0,Math.PI*2);
+ctx.stroke();
+
+ctx.beginPath();
+ctx.arc(r,r,r-2,0,Math.PI*2);
+ctx.fillStyle="white";
+ctx.fill();
+
+let illum=0.5*(1-Math.cos(2*Math.PI*p));
+let shadow=1-illum;
+
+let offset=(shadow-0.5)*w*1.2;
+
+ctx.save();
+
+ctx.beginPath();
+ctx.arc(r,r,r-2,0,Math.PI*2);
+ctx.clip();
+
+ctx.beginPath();
+ctx.ellipse(r+offset,r,r,r,0,0,Math.PI*2);
+ctx.fillStyle="black";
+ctx.fill();
+
+ctx.restore();
+}
+
+function render(){
+
+let today=new Date();
+
+document.getElementById("date").innerText=
+today.toLocaleDateString("nl-NL",{dateStyle:"full"});
+
+let p=phase(today);
+
+drawMoon(document.getElementById("moon"),p);
+
+document.getElementById("full").innerText=
+daysUntilFull(today)+" dagen tot volle maan";
+
+document.getElementById("new").innerText=
+daysUntilNew(today)+" dagen tot nieuwe maan";
+
+}
+
+render();
+
+</script>
+
+</body>
+</html>

@@ -12,6 +12,7 @@
       --panel:#0f1830; --panelBorder:#2a3c66;
       --text:#e7eeff; --muted:#b1c2ea; --hint:#8ea4d8;
       --accent:#87a7ff; --explain:#d9e4ff; --shadow:rgba(0,0,0,.35);
+      --gold1:#fff7cc; --gold2:#f7d774; --gold3:#e0b94d; --gold4:#b88922; --gold5:#2a1d04;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
     body{ margin:0; background:var(--bg); color:var(--text); }
@@ -39,6 +40,7 @@
     }
     .grid2{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
     @media (max-width: 860px){ .grid2{ grid-template-columns: 1fr; } }
+
     .btnRow{ display:flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
     button{
       border-radius: 12px; border: 1px solid var(--panelBorder);
@@ -46,18 +48,46 @@
       padding: 8px 12px; font-size: 14px; cursor:pointer;
     }
     button:hover{ filter: brightness(1.08); }
+
     .chip{
-      display:inline-block; padding: 4px 10px; border: 1px solid var(--panelBorder);
+      display:inline-flex; align-items:center; gap:8px;
+      padding: 4px 10px; border: 1px solid var(--panelBorder);
       border-radius: 999px; background: #0b1020; color: var(--muted);
       font-size: 12px; white-space: nowrap;
+    }
+    .dot{
+      width:8px; height:8px; border-radius:999px;
+      background: var(--accent);
+      box-shadow: 0 0 0 2px rgba(135,167,255,.18);
     }
     .mono{
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
       font-size: 12px; color: var(--muted);
     }
 
+    /* Moon stage */
     .moonStage{ display:flex; flex-direction: column; align-items:center; gap: 10px; padding: 10px 8px 2px; }
-    canvas#bigMoon{ width: 300px; height: 300px; display:block; border-radius: 999px; }
+    .moonWrap{
+      position:relative;
+      width: 300px; height: 300px;
+      border-radius: 999px;
+    }
+    canvas#bigMoon{
+      width: 300px; height: 300px;
+      display:block; border-radius: 999px;
+      position:relative; z-index:2;
+    }
+    .glow{
+      position:absolute; inset:-16px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 40% 35%, rgba(224,185,77,.35), rgba(224,185,77,0) 60%);
+      filter: blur(6px);
+      opacity: 0;
+      transition: opacity .25s ease;
+      z-index:1;
+      pointer-events:none;
+    }
+    .glow.on{ opacity: 1; }
 
     .kpis{ display:grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 8px; }
     @media (max-width: 520px){ .kpis{ grid-template-columns: 1fr; } }
@@ -68,6 +98,7 @@
     .kpi .label{ font-size: 12px; color: var(--muted); margin-bottom: 4px; }
     .kpi .value{ font-size: 16px; color: var(--explain); font-weight: 650; }
 
+    /* Calendar */
     .calHead{ display:flex; align-items:center; justify-content:space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
     .weekdays{
       display:grid; grid-template-columns: repeat(7, 1fr);
@@ -76,19 +107,38 @@
     }
     .calGrid{ display:grid; grid-template-columns: repeat(7, 1fr); gap: 10px 8px; }
     .cell{
-      height: 64px; border-radius: 12px; border: 1px solid transparent;
+      height: 72px; border-radius: 12px; border: 1px solid transparent;
       display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
       gap: 7px; padding-top: 8px; cursor:pointer; user-select:none;
     }
     .cell:hover{ border-color: rgba(135,167,255,.35); background: rgba(15,24,48,.35); }
     .cell.today{ border-color: rgba(135,167,255,.55); background: rgba(15,24,48,.55); }
     .cell.selected{ border-color: rgba(135,167,255,.95); background: rgba(15,24,48,.75); }
+
+    .dayRow{
+      width: 100%;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 0 10px;
+    }
     .day{ font-size: 12px; font-weight: 700; color: var(--text); line-height: 1; }
+    .badge{
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(224,185,77,.35);
+      color: rgba(255,247,204,.95);
+      background: rgba(224,185,77,.10);
+      letter-spacing: .2px;
+    }
+
     canvas.mini{ width: 18px; height: 18px; display:block; border-radius: 999px; }
 
     .detailRow{ display:flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
     .msgTitle{ font-size: 13px; color: var(--accent); font-weight: 650; margin-top: 10px; }
     .msgBody{ margin-top: 10px; color: var(--explain); font-size: 16px; line-height: 1.8; max-width: 44rem; }
+
     footer{ margin-top: 10px; color: var(--hint); font-size: 12px; }
   </style>
 </head>
@@ -100,9 +150,13 @@
       <p class="mono" id="todayLabel">—</p>
 
       <div class="grid2">
+        <!-- LEFT -->
         <div class="panel">
           <div class="moonStage">
-            <canvas id="bigMoon" width="700" height="700" aria-label="Moon phase"></canvas>
+            <div class="moonWrap">
+              <div class="glow" id="glow"></div>
+              <canvas id="bigMoon" width="700" height="700" aria-label="Moon phase"></canvas>
+            </div>
             <div class="mono" id="phaseLabel">—</div>
 
             <div class="kpis">
@@ -117,11 +171,12 @@
             </div>
 
             <div class="hint">
-              New Moon = fully dark · Full Moon = fully bright (gold) · Quarters are exactly half.
+              Accurate phase (Julian Day). New = fully black · Full = fully gold · Quarters = exactly half.
             </div>
           </div>
         </div>
 
+        <!-- RIGHT -->
         <div class="panel">
           <div class="calHead">
             <div class="title" id="monthTitle">—</div>
@@ -141,63 +196,78 @@
           <div class="msgBody" id="holisticText">Select a day to see the theme.</div>
 
           <div class="detailRow">
-            <span class="chip" id="selectedDatePill">Selected: —</span>
-            <span class="chip" id="selectedPhasePill">Phase: —</span>
-            <span class="chip" id="selectedIllumPill">Illumination: —</span>
+            <span class="chip"><span class="dot"></span><span id="selectedDatePill">Selected: —</span></span>
+            <span class="chip"><span class="dot" style="background: rgba(224,185,77,.9); box-shadow:0 0 0 2px rgba(224,185,77,.18)"></span><span id="selectedPhasePill">Phase: —</span></span>
+            <span class="chip"><span class="dot" style="background: rgba(0,0,0,.9); box-shadow:0 0 0 2px rgba(0,0,0,.18)"></span><span id="selectedIllumPill">Illumination: —</span></span>
           </div>
         </div>
       </div>
 
-      <footer>Practical phase approximation (synodic month).</footer>
+      <footer>Tip: If you want “Amsterdam local” exact timestamps for full/new, I can add a small offline approximation too.</footer>
     </div>
   </div>
 
 <script>
-/* ========= Moon math (same as before) ========= */
+/* =========================
+   Accurate-ish Moon phase (Julian Day)
+   Reference new moon: JD 2451550.1
+========================= */
 const Moon = (() => {
-  const synodicMonth = 29.53058867;
-  const epoch = new Date(Date.UTC(2000,0,6,18,14,0));
+  const SYNODIC_MONTH = 29.530588853;
+  const KNOWN_NEW_MOON_JD = 2451550.1; // reference near 2000-01-06
+
+  function julianDate(date){
+    return date.getTime()/86400000 + 2440587.5;
+  }
 
   function phase(date){
-    const ms = date.getTime() - epoch.getTime();
-    const days = ms / 86400000;
-    const lunations = days / synodicMonth;
-    let frac = lunations - Math.floor(lunations);
-    if (frac < 0) frac += 1;
-    return frac;
+    const jd = julianDate(date);
+    let p = ((jd - KNOWN_NEW_MOON_JD) / SYNODIC_MONTH) % 1;
+    if (p < 0) p += 1;
+    return p; // [0,1)
   }
 
   function illumination(p){
-    return 0.5 * (1 - Math.cos(2 * Math.PI * p));
+    return 0.5 * (1 - Math.cos(2 * Math.PI * p)); // 0..1
   }
 
   function daysUntilNewMoon(date){
     const p = phase(date);
-    return Math.max(0, Math.round((1 - p) * synodicMonth));
+    return Math.max(0, Math.round((1 - p) * SYNODIC_MONTH));
   }
 
   function daysUntilFullMoon(date){
     const p = phase(date);
-    let delta = (0.5 - p);
-    if (delta < 0) delta = 1 + delta;
-    return Math.max(0, Math.round(delta * synodicMonth));
+    let delta = 0.5 - p;
+    if (delta < 0) delta += 1;
+    return Math.max(0, Math.round(delta * SYNODIC_MONTH));
   }
 
   function phaseName(p){
-    const names = [
-      "New Moon","Waxing Crescent","First Quarter","Waxing Gibbous",
-      "Full Moon","Waning Gibbous","Last Quarter","Waning Crescent"
+    const phases = [
+      "New Moon",
+      "Waxing Crescent",
+      "First Quarter",
+      "Waxing Gibbous",
+      "Full Moon",
+      "Waning Gibbous",
+      "Last Quarter",
+      "Waning Crescent"
     ];
-    const idx = Math.floor(((p + 1/16) % 1) * 8);
-    return names[idx];
+    const idx = Math.floor((p * 8) + 0.5) % 8;
+    return phases[idx];
   }
 
   return { phase, illumination, daysUntilNewMoon, daysUntilFullMoon, phaseName };
 })();
 
-/* ========= FIXED: Gold + Black moon render =========
-   Uses a robust two-circle terminator shadow on top of a gold disc.
-   This makes full/new/quarters visually consistent with the phase. */
+/* =========================
+   Gold + Black Moon renderer
+   Robust: draw gold disc, then draw black "shadow terminator" correctly.
+   Uses TWO strategies:
+   - crescents/gibbous using ellipse-width trick (stable)
+   - exact quarters and extremes forced
+========================= */
 function drawMoonGold(canvas, p, opts = {}) {
   const ctx = canvas.getContext("2d");
   const w = canvas.width, h = canvas.height;
@@ -206,26 +276,26 @@ function drawMoonGold(canvas, p, opts = {}) {
 
   ctx.clearRect(0,0,w,h);
 
-  const outline = opts.outline ?? 12;
+  const outline = opts.outline ?? 14;
 
-  // gold gradient
+  // Gold gradient
   const gold = ctx.createRadialGradient(
     cx - R*0.35, cy - R*0.45, R*0.08,
     cx, cy, R*1.08
   );
-  gold.addColorStop(0.00, "#fff7cc");
-  gold.addColorStop(0.18, "#f7d774");
-  gold.addColorStop(0.45, "#e0b94d");
-  gold.addColorStop(0.72, "#b88922");
-  gold.addColorStop(1.00, "#2a1d04");
+  gold.addColorStop(0.00, getCss("--gold1"));
+  gold.addColorStop(0.18, getCss("--gold2"));
+  gold.addColorStop(0.45, getCss("--gold3"));
+  gold.addColorStop(0.72, getCss("--gold4"));
+  gold.addColorStop(1.00, getCss("--gold5"));
 
-  // base gold disc
+  // Base gold disc
   ctx.beginPath();
   ctx.arc(cx, cy, R, 0, Math.PI*2);
   ctx.fillStyle = gold;
   ctx.fill();
 
-  // gloss
+  // Gloss
   const shine = ctx.createRadialGradient(
     cx - R*0.55, cy - R*0.60, 1,
     cx - R*0.25, cy - R*0.30, R*0.95
@@ -238,23 +308,23 @@ function drawMoonGold(canvas, p, opts = {}) {
   ctx.fillStyle = shine;
   ctx.fill();
 
-  // rim
+  // Rim
   ctx.beginPath();
   ctx.arc(cx, cy, R, 0, Math.PI*2);
   ctx.lineWidth = outline;
-  ctx.strokeStyle = "#e0b94d";
+  ctx.strokeStyle = getCss("--gold3");
   ctx.stroke();
 
   const r = R - outline*0.55;
 
-  // clip to inner circle
+  // Clip to inner circle
   ctx.save();
   ctx.translate(cx, cy);
   ctx.beginPath();
   ctx.arc(0,0,r,0,Math.PI*2);
   ctx.clip();
 
-  // OPTIONAL subtle texture (very light)
+  // Optional subtle texture
   if (opts.texture) {
     ctx.globalAlpha = 0.08;
     for (let i=0;i<14;i++){
@@ -272,39 +342,70 @@ function drawMoonGold(canvas, p, opts = {}) {
     ctx.globalAlpha = 1;
   }
 
-  // Shadow rendering:
-  // - We draw a black "terminator" shape on top of the gold disc.
-  // - At p=0 (new) => shadow covers all.
-  // - At p=0.5 (full) => shadow covers none.
-  const a = 2 * Math.PI * p;
-  let x = r * Math.cos(a);  // +r at new, 0 at quarter, -r at full
+  const illum = Moon.illumination(p);
 
-  // Make waxing light on RIGHT, waning light on LEFT:
-  // Our shadow shape is built from the RIGHT semicircle of the main disc,
-  // so we flip x depending on waxing/waning to keep orientation consistent.
-  if (p <= 0.5) x = -x;
+  // Hard clamp extremes (prevents artifacts)
+  if (illum <= 0.002) {
+    // New Moon: fully black
+    ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2);
+    ctx.fillStyle = "#000"; ctx.fill();
+    ctx.restore();
+    return;
+  }
+  if (illum >= 0.998) {
+    // Full Moon: leave gold
+    ctx.restore();
+    return;
+  }
 
-  // Special-cases to guarantee perfect extremes
-  const illum = 0.5 * (1 - Math.cos(a));
-  if (illum < 0.001) {
-    // NEW: fully black
-    ctx.beginPath();
-    ctx.arc(0,0,r,0,Math.PI*2);
+  // Ensure quarters are EXACT half visually
+  // If phase is near 0.25 or 0.75, force a clean half.
+  const nearQuarter = (x) => Math.abs(x) < 0.006;
+  const pFromQuarter = Math.min(Math.abs(p-0.25), Math.abs(p-0.75), Math.abs((p+1)-0.25), Math.abs((p+1)-0.75));
+  if (pFromQuarter < 0.006) {
+    // Waxing quarter => right half lit (shadow on left)
+    // Waning quarter => left half lit (shadow on right)
+    const waxing = p < 0.5;
     ctx.fillStyle = "#000";
+    ctx.beginPath();
+    if (waxing) {
+      // shadow left half
+      ctx.rect(-r, -r, r, 2*r);
+    } else {
+      // shadow right half
+      ctx.rect(0, -r, r, 2*r);
+    }
     ctx.fill();
     ctx.restore();
     return;
   }
-  if (illum > 0.999) {
-    // FULL: leave gold as-is
-    ctx.restore();
-    return;
-  }
+
+  // General case: draw shadow using ellipse “terminator” width
+  // k goes from +1 (new) to -1 (full)
+  const k = Math.cos(2 * Math.PI * p);
+
+  // Width of the shadow ellipse: abs(k)*r gives correct progression
+  const a = Math.abs(k) * r;
+
+  // Direction:
+  // Waxing (p<0.5): light on right => shadow on left
+  // Waning (p>0.5): light on left => shadow on right
+  const shadowOnLeft = (p < 0.5);
 
   ctx.fillStyle = "#000";
   ctx.beginPath();
-  ctx.arc(0, 0, r, -Math.PI/2, Math.PI/2, false);
-  ctx.arc(x, 0, r,  Math.PI/2, -Math.PI/2, true);
+
+  // We fill the shadow area as: half-disc + ellipse to form terminator
+  // For waxing: shadow occupies LEFT side; for waning: RIGHT side
+  if (shadowOnLeft) {
+    // left half + ellipse (terminator)
+    ctx.arc(0, 0, r, Math.PI/2, -Math.PI/2, true);        // left semicircle boundary (CCW)
+    ctx.ellipse(0, 0, a, r, 0, -Math.PI/2, Math.PI/2, false);
+  } else {
+    // right half + ellipse (terminator)
+    ctx.arc(0, 0, r, -Math.PI/2, Math.PI/2, true);        // right semicircle boundary (CCW)
+    ctx.ellipse(0, 0, a, r, 0, Math.PI/2, -Math.PI/2, false);
+  }
   ctx.closePath();
   ctx.fill();
 
@@ -315,7 +416,13 @@ function drawMini(canvas, p){
   drawMoonGold(canvas, p, { outline: 6, texture: false });
 }
 
-/* ========= Calendar/UI ========= */
+function getCss(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+/* =========================
+   Calendar + UI
+========================= */
 function fmtFullDateEN(d){
   return new Intl.DateTimeFormat("en-US", { dateStyle:"full" }).format(d);
 }
@@ -325,6 +432,7 @@ function fmtMonthEN(d){
 function fmtShortEN(d){
   return new Intl.DateTimeFormat("en-US", { year:"numeric", month:"short", day:"numeric" }).format(d);
 }
+
 function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
 function endOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
 function sameDay(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
@@ -332,6 +440,23 @@ function mondayFirstWeekdayIndex(date){ const js=date.getDay(); return (js+6)%7;
 function isoDate(d){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0');
   return `${y}-${m}-${da}`;
+}
+
+// Mark “big” phases in calendar
+function majorPhaseTag(p){
+  // nearest of: 0 (NEW), 0.25 (FQ), 0.5 (FULL), 0.75 (LQ)
+  const targets = [
+    {t:0.00, tag:"NEW"},
+    {t:0.25, tag:"FQ"},
+    {t:0.50, tag:"FULL"},
+    {t:0.75, tag:"LQ"},
+  ];
+  let best = {d: 999, tag: ""};
+  for (const x of targets){
+    const d = Math.min(Math.abs(p-x.t), Math.abs((p+1)-x.t), Math.abs(p-(x.t+1)));
+    if (d < best.d) best = {d, tag:x.tag};
+  }
+  return (best.d < 0.012) ? best.tag : ""; // threshold ~0.35 day
 }
 
 const HOLISTIC = {
@@ -361,7 +486,7 @@ function updateSelection(date){
 
   document.getElementById("selectedDatePill").textContent = `Selected: ${fmtShortEN(date)}`;
   document.getElementById("selectedPhasePill").textContent = `Phase: ${name}`;
-  document.getElementById("selectedIllumPill").textContent = `Illumination: ${Math.round(illum*100)}%`;
+  document.getElementById("selectedIllumPill").textContent = `Illumination: ${Math.floor(illum*100)}%`;
 
   renderCalendar();
 }
@@ -377,13 +502,17 @@ function renderTop(){
   drawMoonGold(document.getElementById("bigMoon"), p, { outline: 14, texture: true });
 
   document.getElementById("phaseLabel").textContent =
-    `${name} · ${Math.round(illum*100)}% illuminated`;
+    `${name} · ${Math.floor(illum*100)}% illuminated`;
 
   document.getElementById("untilFull").textContent =
     `in ${Moon.daysUntilFullMoon(today)} days`;
 
   document.getElementById("untilNew").textContent =
     `in ${Moon.daysUntilNewMoon(today)} days`;
+
+  // glow only when very full
+  const glow = document.getElementById("glow");
+  glow.classList.toggle("on", illum >= 0.985);
 
   updateSelection(today);
 }
@@ -408,23 +537,35 @@ function renderCalendar(){
   const today = new Date();
   for(let day=1; day<=last.getDate(); day++){
     const d = new Date(shownMonth.getFullYear(), shownMonth.getMonth(), day);
-    const cell = document.createElement("div");
+    const p = Moon.phase(d);
+    const tag = majorPhaseTag(p);
 
+    const cell = document.createElement("div");
     const isToday = sameDay(d, today);
     const isSelected = selectedISO && isoDate(d) === selectedISO;
-
     cell.className = "cell" + (isToday ? " today" : "") + (isSelected ? " selected" : "");
+
+    const dayRow = document.createElement("div");
+    dayRow.className = "dayRow";
 
     const dayLabel = document.createElement("div");
     dayLabel.className = "day";
     dayLabel.textContent = String(day);
 
+    const badge = document.createElement("div");
+    badge.className = "badge";
+    badge.textContent = tag;
+    badge.style.visibility = tag ? "visible" : "hidden";
+
+    dayRow.appendChild(dayLabel);
+    dayRow.appendChild(badge);
+
     const mini = document.createElement("canvas");
     mini.className = "mini";
     mini.width = 64; mini.height = 64;
-    drawMini(mini, Moon.phase(d));
+    drawMini(mini, p);
 
-    cell.appendChild(dayLabel);
+    cell.appendChild(dayRow);
     cell.appendChild(mini);
     cell.addEventListener("click", () => updateSelection(d));
 
